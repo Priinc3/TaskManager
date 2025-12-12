@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useEffect, useState, useMemo } from "react";
 import { useTaskStore } from "@/store/taskStore";
 import { TaskForm, TaskList, TaskFilters } from "@/components/tasks";
 import { Button } from "@/components/ui";
 import { Plus } from "lucide-react";
 import type { Task } from "@/lib/types";
+import { createBrowserClient } from "@supabase/ssr";
 
 export default function TasksPage() {
-    const supabase = createClient();
     const {
         tasks,
         setTasks,
@@ -23,7 +22,21 @@ export default function TasksPage() {
     const [isLoading, setIsLoading] = useState(true);
     const filteredTasks = getFilteredTasks();
 
+    // Create client only in browser
+    const supabase = useMemo(() => {
+        if (typeof window === "undefined") return null;
+        const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        if (!url || !key) return null;
+        return createBrowserClient(url, key);
+    }, []);
+
     useEffect(() => {
+        if (!supabase) {
+            setIsLoading(false);
+            return;
+        }
+
         const fetchTasks = async () => {
             const { data, error } = await supabase
                 .from("tasks")
@@ -40,6 +53,7 @@ export default function TasksPage() {
     }, [supabase, setTasks]);
 
     const handleCreateTask = async (data: Partial<Task>) => {
+        if (!supabase) return;
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
@@ -59,6 +73,7 @@ export default function TasksPage() {
     };
 
     const handleUpdateTask = async (task: Task) => {
+        if (!supabase) return;
         const { error } = await supabase
             .from("tasks")
             .update({
@@ -74,6 +89,7 @@ export default function TasksPage() {
     };
 
     const handleDeleteTask = async (id: string) => {
+        if (!supabase) return;
         const { error } = await supabase.from("tasks").delete().eq("id", id);
         if (!error) {
             deleteTask(id);
@@ -101,7 +117,7 @@ export default function TasksPage() {
                 <TaskFilters />
                 {isLoading ? (
                     <div className="flex items-center justify-center py-12">
-                        <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : (
                     <TaskList

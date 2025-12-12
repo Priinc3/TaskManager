@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useEffect, useState, useMemo } from "react";
 import { useTaskStore } from "@/store/taskStore";
 import { TaskForm, TaskList, TaskFilters } from "@/components/tasks";
 import {
@@ -13,11 +12,11 @@ import {
     Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui";
-import { isToday, isThisWeek, isPast } from "date-fns";
+import { isToday, isPast } from "date-fns";
 import type { Task } from "@/lib/types";
+import { createBrowserClient } from "@supabase/ssr";
 
 export default function DashboardPage() {
-    const supabase = createClient();
     const {
         tasks,
         setTasks,
@@ -33,8 +32,22 @@ export default function DashboardPage() {
     const stats = getTaskStats();
     const filteredTasks = getFilteredTasks();
 
+    // Create client only in browser
+    const supabase = useMemo(() => {
+        if (typeof window === "undefined") return null;
+        const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        if (!url || !key) return null;
+        return createBrowserClient(url, key);
+    }, []);
+
     // Fetch tasks on mount
     useEffect(() => {
+        if (!supabase) {
+            setIsLoading(false);
+            return;
+        }
+
         const fetchTasks = async () => {
             const { data, error } = await supabase
                 .from("tasks")
@@ -87,6 +100,7 @@ export default function DashboardPage() {
     );
 
     const handleCreateTask = async (data: Partial<Task>) => {
+        if (!supabase) return;
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
@@ -106,6 +120,7 @@ export default function DashboardPage() {
     };
 
     const handleUpdateTask = async (task: Task) => {
+        if (!supabase) return;
         const { error } = await supabase
             .from("tasks")
             .update({
@@ -121,6 +136,7 @@ export default function DashboardPage() {
     };
 
     const handleDeleteTask = async (id: string) => {
+        if (!supabase) return;
         const { error } = await supabase.from("tasks").delete().eq("id", id);
         if (!error) {
             deleteTask(id);
@@ -132,29 +148,29 @@ export default function DashboardPage() {
             label: "Total Tasks",
             value: stats.total,
             icon: CheckCircle2,
-            color: "bg-primary-500",
-            bgColor: "bg-primary-50 dark:bg-primary-900/20",
+            color: "text-sky-500",
+            bgColor: "bg-sky-50 dark:bg-sky-900/20",
         },
         {
             label: "In Progress",
             value: stats.in_progress,
             icon: Clock,
-            color: "bg-warning-500",
-            bgColor: "bg-warning-50 dark:bg-warning-900/20",
+            color: "text-amber-500",
+            bgColor: "bg-amber-50 dark:bg-amber-900/20",
         },
         {
             label: "Completed",
             value: stats.completed,
             icon: TrendingUp,
-            color: "bg-success-500",
-            bgColor: "bg-success-50 dark:bg-success-900/20",
+            color: "text-green-500",
+            bgColor: "bg-green-50 dark:bg-green-900/20",
         },
         {
             label: "Overdue",
             value: stats.overdue,
             icon: AlertCircle,
-            color: "bg-danger-500",
-            bgColor: "bg-danger-50 dark:bg-danger-900/20",
+            color: "text-red-500",
+            bgColor: "bg-red-50 dark:bg-red-900/20",
         },
     ];
 
@@ -190,7 +206,7 @@ export default function DashboardPage() {
                                 </p>
                             </div>
                             <div className={`p-3 rounded-xl ${stat.bgColor}`}>
-                                <stat.icon className={`h-6 w-6 ${stat.color.replace("bg-", "text-")}`} />
+                                <stat.icon className={`h-6 w-6 ${stat.color}`} />
                             </div>
                         </div>
                     </div>
@@ -199,14 +215,14 @@ export default function DashboardPage() {
 
             {/* Overdue Alert */}
             {overdueTasks.length > 0 && (
-                <div className="card bg-danger-50 dark:bg-danger-900/20 border-danger-200 dark:border-danger-800 p-4">
+                <div className="card bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 p-4">
                     <div className="flex items-center gap-3">
-                        <AlertCircle className="h-5 w-5 text-danger-500" />
+                        <AlertCircle className="h-5 w-5 text-red-500" />
                         <div>
-                            <p className="font-medium text-danger-700 dark:text-danger-300">
+                            <p className="font-medium text-red-700 dark:text-red-300">
                                 You have {overdueTasks.length} overdue task{overdueTasks.length > 1 ? "s" : ""}
                             </p>
-                            <p className="text-sm text-danger-600 dark:text-danger-400">
+                            <p className="text-sm text-red-600 dark:text-red-400">
                                 Review and update your task deadlines
                             </p>
                         </div>
@@ -217,17 +233,17 @@ export default function DashboardPage() {
             {/* Today's Tasks */}
             <div className="card p-6">
                 <div className="flex items-center gap-3 mb-4">
-                    <Calendar className="h-5 w-5 text-primary-500" />
+                    <Calendar className="h-5 w-5 text-sky-500" />
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                         Today&apos;s Tasks
                     </h2>
-                    <span className="px-2 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-sm font-medium">
+                    <span className="px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 text-sm font-medium">
                         {todayTasks.length}
                     </span>
                 </div>
                 {isLoading ? (
                     <div className="flex items-center justify-center py-12">
-                        <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : (
                     <TaskList
@@ -246,7 +262,7 @@ export default function DashboardPage() {
                 <TaskFilters />
                 {isLoading ? (
                     <div className="flex items-center justify-center py-12">
-                        <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : (
                     <TaskList

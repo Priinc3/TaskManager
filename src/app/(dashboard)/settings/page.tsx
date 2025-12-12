@@ -1,18 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useState, useEffect, useMemo } from "react";
 import { Button, Input, Select } from "@/components/ui";
 import { User, Bell, Palette, Moon, Sun, Save } from "lucide-react";
+import { createBrowserClient } from "@supabase/ssr";
 
 export default function SettingsPage() {
-    const supabase = createClient();
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<{ email?: string; user_metadata?: { full_name?: string } } | null>(null);
     const [isDark, setIsDark] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+    // Create client only in browser
+    const supabase = useMemo(() => {
+        if (typeof window === "undefined") return null;
+        const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        if (!url || !key) return null;
+        return createBrowserClient(url, key);
+    }, []);
+
     useEffect(() => {
+        if (!supabase) return;
+
         const getUser = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             setUser(user);
@@ -53,8 +63,8 @@ export default function SettingsPage() {
             {message && (
                 <div
                     className={`p-4 rounded-xl ${message.type === "success"
-                            ? "bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-300"
-                            : "bg-danger-50 dark:bg-danger-900/20 text-danger-700 dark:text-danger-300"
+                            ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"
+                            : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300"
                         }`}
                 >
                     {message.text}
@@ -64,8 +74,8 @@ export default function SettingsPage() {
             {/* Profile Section */}
             <div className="card p-6">
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 rounded-xl bg-primary-100 dark:bg-primary-900/30">
-                        <User className="h-5 w-5 text-primary-600" />
+                    <div className="p-2 rounded-xl bg-sky-100 dark:bg-sky-900/30">
+                        <User className="h-5 w-5 text-sky-600" />
                     </div>
                     <div>
                         <h2 className="font-semibold text-slate-900 dark:text-white">
@@ -95,8 +105,8 @@ export default function SettingsPage() {
             {/* Appearance Section */}
             <div className="card p-6">
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 rounded-xl bg-accent-100 dark:bg-accent-900/30">
-                        <Palette className="h-5 w-5 text-accent-600" />
+                    <div className="p-2 rounded-xl bg-fuchsia-100 dark:bg-fuchsia-900/30">
+                        <Palette className="h-5 w-5 text-fuchsia-600" />
                     </div>
                     <div>
                         <h2 className="font-semibold text-slate-900 dark:text-white">
@@ -138,8 +148,8 @@ export default function SettingsPage() {
             {/* Notifications Section */}
             <div className="card p-6">
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 rounded-xl bg-warning-100 dark:bg-warning-900/30">
-                        <Bell className="h-5 w-5 text-warning-600" />
+                    <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/30">
+                        <Bell className="h-5 w-5 text-amber-600" />
                     </div>
                     <div>
                         <h2 className="font-semibold text-slate-900 dark:text-white">
@@ -161,7 +171,7 @@ export default function SettingsPage() {
                                 Receive browser notifications for reminders
                             </p>
                         </div>
-                        <button className="relative w-14 h-8 rounded-full bg-primary-500 transition-colors">
+                        <button className="relative w-14 h-8 rounded-full bg-sky-500 transition-colors">
                             <div className="absolute top-1 left-7 w-6 h-6 rounded-full bg-white shadow-md transition-all" />
                         </button>
                     </div>
