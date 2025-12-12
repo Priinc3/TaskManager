@@ -1,0 +1,299 @@
+{
+    "name": "TaskFlow Reminder Notifications",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "minutesInterval": 1
+                        }
+                    ]
+                }
+            },
+            "id": "schedule-trigger",
+            "name": "Every Minute",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                0,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "https://YOUR_VERCEL_APP.vercel.app/api/reminders",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Authorization",
+                            "value": "Bearer taskflow-n8n-api-key-2024"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "fetch-reminders",
+            "name": "Fetch Pending Reminders",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                220,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "condition-has-reminders",
+                            "leftValue": "={{ $json.reminders.length }}",
+                            "rightValue": 0,
+                            "operator": {
+                                "type": "number",
+                                "operation": "gt"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "check-reminders",
+            "name": "Has Reminders?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                440,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "fieldToSplitOut": "reminders",
+                "options": {}
+            },
+            "id": "split-reminders",
+            "name": "Split Into Items",
+            "type": "n8n-nodes-base.splitOut",
+            "typeVersion": 1,
+            "position": [
+                660,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "sendTo": "={{ $json.user_email }}",
+                "subject": "⏰ Reminder: {{ $json.task.title }}",
+                "emailType": "html",
+                "message": "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#334155;margin:0;padding:0;background-color:#f8fafc}.container{max-width:600px;margin:0 auto;padding:20px}.card{background:white;border-radius:16px;padding:32px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)}.header{text-align:center;margin-bottom:24px}.logo{font-size:24px;font-weight:bold;color:#0ea5e9}.title{font-size:20px;font-weight:600;color:#0f172a;margin:0 0 8px 0}.priority{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;margin-bottom:16px}.priority-high{background:#fef2f2;color:#dc2626}.priority-medium{background:#fffbeb;color:#d97706}.priority-low{background:#f0fdf4;color:#16a34a}.description{color:#64748b;margin-bottom:20px}.due-date{background:#f1f5f9;padding:12px 16px;border-radius:8px;margin-bottom:20px}.due-label{font-size:12px;color:#94a3b8;margin-bottom:4px}.due-value{font-weight:600;color:#0f172a}.btn{display:inline-block;background:#0ea5e9;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:500}.footer{text-align:center;margin-top:24px;font-size:12px;color:#94a3b8}</style></head><body><div class=\"container\"><div class=\"card\"><div class=\"header\"><div class=\"logo\">✓ TaskFlow</div></div><p style=\"color:#64748b;margin-bottom:20px\">Hi {{ $json.user?.full_name || 'there' }},</p><p style=\"margin-bottom:16px\">This is a reminder for your upcoming task:</p><h2 class=\"title\">📌 {{ $json.task.title }}</h2><span class=\"priority priority-{{ $json.task.priority }}\">{{ $json.task.priority?.toUpperCase() || 'MEDIUM' }} PRIORITY</span><p class=\"description\">{{ $json.task.description || '' }}</p><div class=\"due-date\"><div class=\"due-label\">📅 Due Date</div><div class=\"due-value\">{{ $json.task.due_date || 'No due date set' }}</div></div><p style=\"color:#64748b;margin-bottom:20px\">Don't forget to complete this task on time!</p><a href=\"https://YOUR_VERCEL_APP.vercel.app/dashboard\" class=\"btn\">Open TaskFlow →</a><div class=\"footer\"><p>You received this email because you set a reminder in TaskFlow.</p></div></div></div></body></html>",
+                "options": {
+                    "appendAttribution": false
+                }
+            },
+            "id": "send-gmail",
+            "name": "Send Gmail",
+            "type": "n8n-nodes-base.gmail",
+            "typeVersion": 2.1,
+            "position": [
+                880,
+                200
+            ],
+            "credentials": {
+                "gmailOAuth2": {
+                    "id": "YOUR_GMAIL_CREDENTIAL_ID",
+                    "name": "Gmail account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "reminder-id",
+                            "name": "reminder_id",
+                            "value": "={{ $json.id }}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "extract-id",
+            "name": "Extract Reminder ID",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                1100,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "aggregate": "aggregateAllItemData",
+                "destinationFieldName": "reminder_ids",
+                "include": "specifiedFields",
+                "fieldsToInclude": "reminder_id",
+                "options": {}
+            },
+            "id": "aggregate-ids",
+            "name": "Collect All IDs",
+            "type": "n8n-nodes-base.aggregate",
+            "typeVersion": 1,
+            "position": [
+                1320,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://YOUR_VERCEL_APP.vercel.app/api/reminders",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Authorization",
+                            "value": "Bearer taskflow-n8n-api-key-2024"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"reminder_ids\": {{ JSON.stringify($json.reminder_ids.map(r => r.reminder_id)) }}\n}",
+                "options": {}
+            },
+            "id": "mark-sent",
+            "name": "Mark Reminders as Sent",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1540,
+                200
+            ]
+        },
+        {
+            "parameters": {},
+            "id": "no-op",
+            "name": "No Reminders",
+            "type": "n8n-nodes-base.noOp",
+            "typeVersion": 1,
+            "position": [
+                660,
+                400
+            ]
+        }
+    ],
+    "connections": {
+        "Every Minute": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Pending Reminders",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Pending Reminders": {
+            "main": [
+                [
+                    {
+                        "node": "Has Reminders?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Has Reminders?": {
+            "main": [
+                [
+                    {
+                        "node": "Split Into Items",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "No Reminders",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Split Into Items": {
+            "main": [
+                [
+                    {
+                        "node": "Send Gmail",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send Gmail": {
+            "main": [
+                [
+                    {
+                        "node": "Extract Reminder ID",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Extract Reminder ID": {
+            "main": [
+                [
+                    {
+                        "node": "Collect All IDs",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Collect All IDs": {
+            "main": [
+                [
+                    {
+                        "node": "Mark Reminders as Sent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "taskflow-reminders"
+    },
+    "pinData": {},
+    "versionId": "1.0.0",
+    "triggerCount": 1
+}
