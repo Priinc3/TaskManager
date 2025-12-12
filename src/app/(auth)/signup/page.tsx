@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Mail, Lock, User, Eye, EyeOff } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { Button, Input } from "@/components/ui";
+import { createBrowserClient } from "@supabase/ssr";
 
 const signupSchema = z.object({
     fullName: z.string().min(2, "Name must be at least 2 characters"),
@@ -27,7 +27,15 @@ export default function SignupPage() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
     const router = useRouter();
-    const supabase = createClient();
+
+    // Create client only in browser
+    const supabase = useMemo(() => {
+        if (typeof window === "undefined") return null;
+        return createBrowserClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+    }, []);
 
     const {
         register,
@@ -38,6 +46,7 @@ export default function SignupPage() {
     });
 
     const onSubmit = async (data: SignupFormData) => {
+        if (!supabase) return;
         setError(null);
 
         const { error } = await supabase.auth.signUp({
@@ -61,8 +70,8 @@ export default function SignupPage() {
     if (success) {
         return (
             <div className="animate-fade-in text-center">
-                <div className="w-16 h-16 rounded-full bg-success-100 dark:bg-success-500/20 flex items-center justify-center mx-auto mb-4">
-                    <Mail className="h-8 w-8 text-success-500" />
+                <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                    <Mail className="h-8 w-8 text-green-500" />
                 </div>
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
                     Check your email
@@ -91,7 +100,7 @@ export default function SignupPage() {
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 {error && (
-                    <div className="p-3 rounded-xl bg-danger-50 dark:bg-danger-500/10 text-danger-600 dark:text-danger-400 text-sm">
+                    <div className="p-3 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-sm">
                         {error}
                     </div>
                 )}
@@ -154,7 +163,7 @@ export default function SignupPage() {
                 Already have an account?{" "}
                 <Link
                     href="/login"
-                    className="text-primary-600 hover:text-primary-700 font-medium"
+                    className="text-sky-600 hover:text-sky-700 font-medium"
                 >
                     Sign in
                 </Link>
