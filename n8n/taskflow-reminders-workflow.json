@@ -1,48 +1,67 @@
 {
-    "name": "TaskFlow Reminders Workflow",
     "nodes": [
         {
             "parameters": {
-                "rule": {
-                    "interval": [
+                "operation": "update",
+                "tableId": "reminders",
+                "filters": {
+                    "conditions": [
                         {
-                            "field": "minutes",
-                            "minutesInterval": 1
+                            "keyName": "id",
+                            "keyValue": "={{ $('Get Pending Reminders').item.json.id }}"
+                        }
+                    ]
+                },
+                "dataToSend": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "is_sent": true
+                    }
+                }
+            },
+            "id": "4eed354a-3599-471f-82be-1a2558ae6c67",
+            "name": "Mark Reminder as Sent",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                1808,
+                2000
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "vKaXWAw17A3mLqZR",
+                    "name": "TaskManager"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "getAll",
+                "tableId": "reminders",
+                "returnAll": true,
+                "filters": {
+                    "conditions": [
+                        {
+                            "keyName": "is_sent",
+                            "keyValue": "false"
                         }
                     ]
                 }
             },
-            "id": "37a4b939-e257-4b45-b0fc-9c5be7379c04",
-            "name": "Every Minute",
-            "type": "n8n-nodes-base.scheduleTrigger",
-            "typeVersion": 1.2,
+            "id": "c3f916c2-a6a9-4731-a6c6-75975c052a17",
+            "name": "Get Pending Reminders",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
             "position": [
-                -784,
-                400
-            ]
-        },
-        {
-            "parameters": {
-                "url": "https://taskmanager-4gpyr6iwr-0-prince-0s-projects.vercel.app/api/reminders",
-                "sendHeaders": true,
-                "headerParameters": {
-                    "parameters": [
-                        {
-                            "name": "Authorization",
-                            "value": "Bearer taskflow-n8n-api-key-2024"
-                        }
-                    ]
-                },
-                "options": {}
-            },
-            "id": "d4936187-5d4a-474b-966a-5b716573aaf0",
-            "name": "Fetch Pending Reminders",
-            "type": "n8n-nodes-base.httpRequest",
-            "typeVersion": 4.2,
-            "position": [
-                -576,
-                400
-            ]
+                720,
+                2112
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "vKaXWAw17A3mLqZR",
+                    "name": "TaskManager"
+                }
+            }
         },
         {
             "parameters": {
@@ -50,17 +69,17 @@
                     "options": {
                         "caseSensitive": true,
                         "leftValue": "",
-                        "typeValidation": "strict",
-                        "version": 1
+                        "typeValidation": "loose",
+                        "version": 2
                     },
                     "conditions": [
                         {
-                            "id": "condition-has-reminders",
-                            "leftValue": "={{ $json.reminders.length }}",
-                            "rightValue": 0,
+                            "id": "condition-time-check",
+                            "leftValue": "={{ new Date($json.remind_at).getTime() }}",
+                            "rightValue": "={{ new Date().getTime() }}",
                             "operator": {
                                 "type": "number",
-                                "operation": "gt"
+                                "operation": "lte"
                             }
                         }
                     ],
@@ -68,45 +87,87 @@
                 },
                 "options": {}
             },
-            "id": "e75ff23b-1462-4563-a285-5d9db35602ab",
-            "name": "Has Reminders?",
+            "id": "time-check-node",
+            "name": "Is Time Due?",
             "type": "n8n-nodes-base.if",
             "typeVersion": 2,
             "position": [
-                -352,
-                400
+                944,
+                2112
             ]
         },
         {
             "parameters": {
-                "fieldToSplitOut": "reminders",
-                "options": {}
+                "operation": "get",
+                "tableId": "profiles",
+                "filters": {
+                    "conditions": [
+                        {
+                            "keyName": "id",
+                            "keyValue": "={{ $('Get Pending Reminders').item.json.user_id }}"
+                        }
+                    ]
+                }
             },
-            "id": "a8809b6a-e012-435e-816f-966b79a39192",
-            "name": "Split Into Items",
-            "type": "n8n-nodes-base.splitOut",
+            "id": "get-profile-node",
+            "name": "Get Profile",
+            "type": "n8n-nodes-base.supabase",
             "typeVersion": 1,
             "position": [
-                -128,
-                288
-            ]
+                1152,
+                2000
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "vKaXWAw17A3mLqZR",
+                    "name": "TaskManager"
+                }
+            }
         },
         {
             "parameters": {
-                "sendTo": "={{ $json.user_email }}",
-                "subject": "⏰ Reminder: {{ $json.task.title }}",
-                "message": "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#334155;margin:0;padding:0;background-color:#f8fafc}.container{max-width:600px;margin:0 auto;padding:20px}.card{background:white;border-radius:16px;padding:32px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)}.header{text-align:center;margin-bottom:24px}.logo{font-size:24px;font-weight:bold;color:#0ea5e9}.title{font-size:20px;font-weight:600;color:#0f172a;margin:0 0 8px 0}.priority{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;margin-bottom:16px}.priority-high{background:#fef2f2;color:#dc2626}.priority-medium{background:#fffbeb;color:#d97706}.priority-low{background:#f0fdf4;color:#16a34a}.description{color:#64748b;margin-bottom:20px}.due-date{background:#f1f5f9;padding:12px 16px;border-radius:8px;margin-bottom:20px}.due-label{font-size:12px;color:#94a3b8;margin-bottom:4px}.due-value{font-weight:600;color:#0f172a}.btn{display:inline-block;background:#0ea5e9;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:500}.footer{text-align:center;margin-top:24px;font-size:12px;color:#94a3b8}</style></head><body><div class=\"container\"><div class=\"card\"><div class=\"header\"><div class=\"logo\">✓ TaskFlow</div></div><p style=\"color:#64748b;margin-bottom:20px\">Hi {{ $json.user?.full_name || 'there' }},</p><p style=\"margin-bottom:16px\">This is a reminder for your upcoming task:</p><h2 class=\"title\">📌 {{ $json.task.title }}</h2><span class=\"priority priority-{{ $json.task.priority }}\">{{ $json.task.priority?.toUpperCase() || 'MEDIUM' }} PRIORITY</span><p class=\"description\">{{ $json.task.description || '' }}</p><div class=\"due-date\"><div class=\"due-label\">📅 Due Date</div><div class=\"due-value\">{{ $json.task.due_date || 'No due date set' }}</div></div><p style=\"color:#64748b;margin-bottom:20px\">Don't forget to complete this task on time!</p><a href=\"https://taskmanager-4gpyr6iwr-0-prince-0s-projects.vercel.app/dashboard\" class=\"btn\">Open TaskFlow →</a><div class=\"footer\"><p>You received this email because you set a reminder in TaskFlow.</p></div></div></div></body></html>",
+                "operation": "get",
+                "tableId": "tasks",
+                "filters": {
+                    "conditions": [
+                        {
+                            "keyName": "id",
+                            "keyValue": "={{ $('Get Pending Reminders').item.json.task_id }}"
+                        }
+                    ]
+                }
+            },
+            "id": "get-task-node",
+            "name": "Get Task",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                1360,
+                2000
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "vKaXWAw17A3mLqZR",
+                    "name": "TaskManager"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "sendTo": "={{ $('Get Profile').item.json.email }}",
+                "subject": "=⏰ Reminder: {{ $('Get Task').item.json.title }}",
+                "message": "=<!DOCTYPE html><html><head><meta charset=\"utf-8\"><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#334155;margin:0;padding:0;background-color:#f8fafc}.container{max-width:600px;margin:0 auto;padding:20px}.card{background:white;border-radius:16px;padding:32px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)}.header{text-align:center;margin-bottom:24px}.logo{font-size:24px;font-weight:bold;color:#0ea5e9}.title{font-size:20px;font-weight:600;color:#0f172a;margin:0 0 8px 0}.priority{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;margin-bottom:16px}.priority-high{background:#fef2f2;color:#dc2626}.priority-medium{background:#fffbeb;color:#d97706}.priority-low{background:#f0fdf4;color:#16a34a}.description{color:#64748b;margin-bottom:20px}.due-date{background:#f1f5f9;padding:12px 16px;border-radius:8px;margin-bottom:20px}.due-label{font-size:12px;color:#94a3b8;margin-bottom:4px}.due-value{font-weight:600;color:#0f172a}.footer{text-align:center;margin-top:24px;font-size:12px;color:#94a3b8}</style></head><body><div class=\"container\"><div class=\"card\"><div class=\"header\"><div class=\"logo\">✓ TaskFlow</div></div><p style=\"color:#64748b;margin-bottom:20px\">Hi {{ $('Get Profile').item.json.full_name || 'there' }},</p><p style=\"margin-bottom:16px\">This is a reminder for your upcoming task:</p><h2 class=\"title\">📌 {{ $('Get Task').item.json.title }}</h2><span class=\"priority priority-{{ $('Get Task').item.json.priority }}\">{{ $('Get Task').item.json.priority ? $('Get Task').item.json.priority.toUpperCase() : 'MEDIUM' }} PRIORITY</span><p class=\"description\">{{ $('Get Task').item.json.description || '' }}</p><div class=\"due-date\"><div class=\"due-label\">📅 Due Date</div><div class=\"due-value\">{{ $('Get Task').item.json.due_date ? new Date($('Get Task').item.json.due_date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'full', timeStyle: 'short' }) : 'No due date set' }}</div></div><p style=\"color:#64748b;margin-bottom:20px\">Don't forget to complete this task on time!</p><div class=\"footer\"><p>You received this email because you set a reminder in TaskFlow.</p></div></div></div></body></html>",
                 "options": {
                     "appendAttribution": false
                 }
             },
-            "id": "01602e9d-de9c-4202-9590-0ad3a04a2a73",
+            "id": "bb376e47-a590-49ce-8563-4baa203eb58f",
             "name": "Send Gmail",
             "type": "n8n-nodes-base.gmail",
             "typeVersion": 2.1,
             "position": [
-                96,
-                288
+                1584,
+                2000
             ],
             "credentials": {
                 "gmailOAuth2": {
@@ -116,130 +177,59 @@
             }
         },
         {
-            "parameters": {
-                "assignments": {
-                    "assignments": [
-                        {
-                            "id": "reminder-id",
-                            "name": "reminder_id",
-                            "value": "={{ $json.id }}",
-                            "type": "string"
-                        }
-                    ]
-                },
-                "options": {}
-            },
-            "id": "53e89c8d-a93f-4e80-a998-1f42f93d61c6",
-            "name": "Extract Reminder ID",
-            "type": "n8n-nodes-base.set",
-            "typeVersion": 3.4,
-            "position": [
-                320,
-                288
-            ]
-        },
-        {
-            "parameters": {
-                "aggregate": "aggregateAllItemData",
-                "destinationFieldName": "reminder_ids",
-                "include": "specifiedFields",
-                "fieldsToInclude": "reminder_id",
-                "options": {}
-            },
-            "id": "f714fcee-26ea-4d5a-a407-eac2d36f0a7a",
-            "name": "Collect All IDs",
-            "type": "n8n-nodes-base.aggregate",
-            "typeVersion": 1,
-            "position": [
-                544,
-                288
-            ]
-        },
-        {
-            "parameters": {
-                "method": "POST",
-                "url": "https://taskmanager-4gpyr6iwr-0-prince-0s-projects.vercel.app/api/reminders",
-                "sendHeaders": true,
-                "headerParameters": {
-                    "parameters": [
-                        {
-                            "name": "Authorization",
-                            "value": "Bearer taskflow-n8n-api-key-2024"
-                        },
-                        {
-                            "name": "Content-Type",
-                            "value": "application/json"
-                        }
-                    ]
-                },
-                "sendBody": true,
-                "specifyBody": "json",
-                "jsonBody": "={\n  \"reminder_ids\": {{ JSON.stringify($json.reminder_ids.map(r => r.reminder_id)) }}\n}",
-                "options": {}
-            },
-            "id": "444cfee3-1530-4b7b-a0fb-1e2793f6ba80",
-            "name": "Mark Reminders as Sent",
-            "type": "n8n-nodes-base.httpRequest",
-            "typeVersion": 4.2,
-            "position": [
-                752,
-                288
-            ]
-        },
-        {
             "parameters": {},
-            "id": "a35eacae-2d03-4c01-bb49-a5e25bcee90e",
-            "name": "No Reminders",
+            "id": "7827f9f5-b2b3-43d8-b46b-91fd20deda3c",
+            "name": "Not Time Yet",
             "type": "n8n-nodes-base.noOp",
             "typeVersion": 1,
             "position": [
-                -128,
-                496
+                1152,
+                2208
             ]
         }
     ],
     "connections": {
-        "Every Minute": {
+        "Get Pending Reminders": {
             "main": [
                 [
                     {
-                        "node": "Fetch Pending Reminders",
+                        "node": "Is Time Due?",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Fetch Pending Reminders": {
+        "Is Time Due?": {
             "main": [
                 [
                     {
-                        "node": "Has Reminders?",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Has Reminders?": {
-            "main": [
-                [
-                    {
-                        "node": "Split Into Items",
+                        "node": "Get Profile",
                         "type": "main",
                         "index": 0
                     }
                 ],
                 [
                     {
-                        "node": "No Reminders",
+                        "node": "Not Time Yet",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Split Into Items": {
+        "Get Profile": {
+            "main": [
+                [
+                    {
+                        "node": "Get Task",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Task": {
             "main": [
                 [
                     {
@@ -254,29 +244,7 @@
             "main": [
                 [
                     {
-                        "node": "Extract Reminder ID",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Extract Reminder ID": {
-            "main": [
-                [
-                    {
-                        "node": "Collect All IDs",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Collect All IDs": {
-            "main": [
-                [
-                    {
-                        "node": "Mark Reminders as Sent",
+                        "node": "Mark Reminder as Sent",
                         "type": "main",
                         "index": 0
                     }

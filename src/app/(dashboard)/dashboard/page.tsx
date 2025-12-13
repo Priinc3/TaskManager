@@ -143,6 +143,7 @@ export default function DashboardPage() {
 
             // Extract reminder_minutes before inserting task
             const { reminder_minutes, ...taskData } = data;
+            console.log("Creating task with reminder_minutes:", reminder_minutes);
 
             const { data: newTask, error } = await supabase
                 .from("tasks")
@@ -156,18 +157,29 @@ export default function DashboardPage() {
 
             if (newTask && !error) {
                 addTask(newTask as Task);
+                console.log("Task created:", newTask.id, "due_date:", newTask.due_date);
 
-                // Create a reminder if reminder_minutes is set and task has a due_date
-                if (reminder_minutes && reminder_minutes > 0 && newTask.due_date) {
+                // Create a reminder if reminder_minutes is set (>= 0) and task has a due_date
+                if (reminder_minutes !== undefined && reminder_minutes >= 0 && newTask.due_date) {
                     const dueDate = new Date(newTask.due_date);
                     const remindAt = new Date(dueDate.getTime() - reminder_minutes * 60 * 1000);
+                    console.log("Creating reminder for:", remindAt.toISOString());
 
-                    await supabase.from("reminders").insert({
+                    const { error: reminderError } = await supabase.from("reminders").insert({
                         task_id: newTask.id,
+                        user_id: user.id,
                         remind_at: remindAt.toISOString(),
                         is_sent: false,
                     });
+
+                    if (reminderError) {
+                        console.error("Error creating reminder:", reminderError);
+                    } else {
+                        console.log("Reminder created successfully!");
+                    }
                 }
+            } else if (error) {
+                console.error("Error creating task:", error);
             }
         } catch (err) {
             console.error("Error creating task:", err);
