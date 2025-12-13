@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Button, Input, Select } from "@/components/ui";
-import { User, Bell, Palette, Moon, Sun, Save } from "lucide-react";
+import { User, Bell, Palette, Moon, Sun, Save, AlertTriangle } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 
 export default function SettingsPage() {
@@ -10,18 +10,27 @@ export default function SettingsPage() {
     const [isDark, setIsDark] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
-    // Create client only in browser
+    // Create client only in browser with error handling
     const supabase = useMemo(() => {
         if (typeof window === "undefined") return null;
-        const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-        if (!url || !key) return null;
-        return createBrowserClient(url, key);
+        try {
+            const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+            const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+            if (!url || !key) return null;
+            return createBrowserClient(url, key);
+        } catch (err) {
+            console.error("Failed to create Supabase client:", err);
+            return null;
+        }
     }, []);
 
     useEffect(() => {
-        if (!supabase) return;
+        if (!supabase) {
+            setError("Unable to connect to database.");
+            return;
+        }
 
         const getUser = async () => {
             const { data: { user } } = await supabase.auth.getUser();
@@ -48,6 +57,15 @@ export default function SettingsPage() {
         setMessage({ type: "success", text: "Settings saved successfully!" });
         setIsSaving(false);
     };
+
+    if (error && !supabase) {
+        return (
+            <div className="flex flex-col items-center justify-center py-24">
+                <AlertTriangle className="h-8 w-8 text-amber-500 mb-4" />
+                <p className="text-slate-500">{error}</p>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-2xl space-y-6">

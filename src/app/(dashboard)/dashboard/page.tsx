@@ -10,6 +10,7 @@ import {
     TrendingUp,
     Calendar,
     Plus,
+    AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui";
 import { isToday, isPast } from "date-fns";
@@ -29,33 +30,50 @@ export default function DashboardPage() {
     } = useTaskStore();
 
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const stats = getTaskStats();
     const filteredTasks = getFilteredTasks();
 
-    // Create client only in browser
+    // Create client only in browser with error handling
     const supabase = useMemo(() => {
         if (typeof window === "undefined") return null;
-        const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-        if (!url || !key) return null;
-        return createBrowserClient(url, key);
+        try {
+            const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+            const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+            if (!url || !key || url === "" || key === "") {
+                console.error("Supabase env vars missing:", { url: !!url, key: !!key });
+                return null;
+            }
+            return createBrowserClient(url, key);
+        } catch (err) {
+            console.error("Failed to create Supabase client:", err);
+            return null;
+        }
     }, []);
 
     // Fetch tasks on mount
     useEffect(() => {
         if (!supabase) {
+            setError("Unable to connect to database. Please check configuration.");
             setIsLoading(false);
             return;
         }
 
         const fetchTasks = async () => {
-            const { data, error } = await supabase
-                .from("tasks")
-                .select("*, subtasks(*), category:categories(*)")
-                .order("created_at", { ascending: false });
+            try {
+                const { data, error: fetchError } = await supabase
+                    .from("tasks")
+                    .select("*, subtasks(*), category:categories(*)")
+                    .order("created_at", { ascending: false });
 
-            if (data && !error) {
-                setTasks(data as Task[]);
+                if (fetchError) {
+                    setError(fetchError.message);
+                } else if (data) {
+                    setTasks(data as Task[]);
+                }
+            } catch (err) {
+                setError("Failed to fetch tasks");
+                console.error(err);
             }
             setIsLoading(false);
         };
@@ -173,6 +191,26 @@ export default function DashboardPage() {
             bgColor: "bg-red-50 dark:bg-red-900/20",
         },
     ];
+
+    // Show error state if Supabase failed to initialize
+    if (error && !supabase) {
+        return (
+            <div className="flex flex-col items-center justify-center py-24">
+                <div className="p-4 rounded-full bg-amber-100 dark:bg-amber-900/30 mb-4">
+                    <AlertTriangle className="h-8 w-8 text-amber-500" />
+                </div>
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
+                    Configuration Error
+                </h2>
+                <p className="text-slate-500 dark:text-slate-400 text-center max-w-md">
+                    {error}
+                </p>
+                <p className="text-sm text-slate-400 dark:text-slate-500 mt-4">
+                    Check that environment variables are properly configured.
+                </p>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
