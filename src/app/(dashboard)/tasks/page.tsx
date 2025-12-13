@@ -1,17 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/SupabaseProvider";
 import { useTaskStore } from "@/store/taskStore";
 import { TaskForm, TaskList, TaskFilters } from "@/components/tasks";
 import { Button } from "@/components/ui";
-import { Plus } from "lucide-react";
+import { Plus, Loader2, AlertTriangle } from "lucide-react";
 import type { Task } from "@/lib/types";
 
 export default function TasksPage() {
-    const supabase = createClient();
+    const { supabase, isLoading: supabaseLoading, error: supabaseError } = useSupabase();
     const {
-        tasks,
         setTasks,
         getFilteredTasks,
         openTaskForm,
@@ -21,28 +20,37 @@ export default function TasksPage() {
     } = useTaskStore();
 
     const [isLoading, setIsLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const filteredTasks = getFilteredTasks();
 
     useEffect(() => {
+        if (supabaseLoading) return;
         if (!supabase) {
             setIsLoading(false);
             return;
         }
 
         const fetchTasks = async () => {
-            const { data, error } = await supabase
-                .from("tasks")
-                .select("*, subtasks(*), category:categories(*)")
-                .order("created_at", { ascending: false });
+            try {
+                const { data, error } = await supabase
+                    .from("tasks")
+                    .select("*, subtasks(*), category:categories(*)")
+                    .order("created_at", { ascending: false });
 
-            if (data && !error) {
-                setTasks(data as Task[]);
+                if (error) {
+                    setFetchError(error.message);
+                } else if (data) {
+                    setTasks(data as Task[]);
+                }
+            } catch (err) {
+                setFetchError("Failed to fetch tasks");
+            } finally {
+                setIsLoading(false);
             }
-            setIsLoading(false);
         };
 
         fetchTasks();
-    }, [supabase, setTasks]);
+    }, [supabase, supabaseLoading, setTasks]);
 
     const handleCreateTask = async (data: Partial<Task>) => {
         if (!supabase) return;
@@ -51,11 +59,7 @@ export default function TasksPage() {
 
         const { data: newTask, error } = await supabase
             .from("tasks")
-            .insert({
-                ...data,
-                user_id: user.id,
-                status: "todo",
-            })
+            .insert({ ...data, user_id: user.id, status: "todo" })
             .select()
             .single();
 
@@ -88,6 +92,24 @@ export default function TasksPage() {
         }
     };
 
+    if (supabaseLoading || isLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center py-24">
+                <Loader2 className="h-8 w-8 text-sky-500 animate-spin mb-4" />
+                <p className="text-slate-500">Loading tasks...</p>
+            </div>
+        );
+    }
+
+    if (supabaseError || fetchError) {
+        return (
+            <div className="flex flex-col items-center justify-center py-24">
+                <AlertTriangle className="h-8 w-8 text-amber-500 mb-4" />
+                <p className="text-slate-500">{supabaseError || fetchError}</p>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -107,17 +129,11 @@ export default function TasksPage() {
 
             <div className="card p-6">
                 <TaskFilters />
-                {isLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
-                    </div>
-                ) : (
-                    <TaskList
-                        tasks={filteredTasks}
-                        onUpdate={handleUpdateTask}
-                        onDelete={handleDeleteTask}
-                    />
-                )}
+                <TaskList
+                    tasks={filteredTasks}
+                    onUpdate={handleUpdateTask}
+                    onDelete={handleDeleteTask}
+                />
             </div>
 
             <TaskForm onSubmit={handleCreateTask} />

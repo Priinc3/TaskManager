@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Search, Bell, Moon, Sun, LogOut, User } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/SupabaseProvider";
 import { Input } from "@/components/ui";
 import { useTaskStore } from "@/store/taskStore";
 
@@ -15,11 +15,11 @@ interface HeaderProps {
 }
 
 export function Header({ user }: HeaderProps) {
+    const { supabase } = useSupabase();
     const [isDark, setIsDark] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const { setFilters, filters } = useTaskStore();
     const router = useRouter();
-    const supabase = createClient();
 
     const toggleTheme = () => {
         setIsDark(!isDark);
@@ -39,7 +39,6 @@ export function Header({ user }: HeaderProps) {
 
     return (
         <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6">
-            {/* Search */}
             <div className="w-96">
                 <Input
                     type="search"
@@ -50,9 +49,7 @@ export function Header({ user }: HeaderProps) {
                 />
             </div>
 
-            {/* Right side */}
             <div className="flex items-center gap-3">
-                {/* Theme toggle */}
                 <button
                     onClick={toggleTheme}
                     className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -64,13 +61,11 @@ export function Header({ user }: HeaderProps) {
                     )}
                 </button>
 
-                {/* Notifications */}
                 <button className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative">
                     <Bell className="h-5 w-5 text-slate-600 dark:text-slate-300" />
                     <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
                 </button>
 
-                {/* User menu */}
                 <div className="relative">
                     <button
                         onClick={() => setShowUserMenu(!showUserMenu)}

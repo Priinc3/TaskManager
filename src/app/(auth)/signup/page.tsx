@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Mail, Lock, User, Eye, EyeOff } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { Mail, Lock, User, Eye, EyeOff, Loader2 } from "lucide-react";
+import { useSupabase } from "@/lib/supabase/SupabaseProvider";
 import { Button, Input } from "@/components/ui";
 
 const signupSchema = z.object({
@@ -22,10 +22,10 @@ const signupSchema = z.object({
 type SignupFormData = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
+    const { supabase, isLoading: supabaseLoading } = useSupabase();
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
-    const supabase = createClient();
 
     const {
         register,
@@ -36,16 +36,17 @@ export default function SignupPage() {
     });
 
     const onSubmit = async (data: SignupFormData) => {
-        if (!supabase) return;
+        if (!supabase) {
+            setError("Unable to connect to database");
+            return;
+        }
         setError(null);
 
         const { error } = await supabase.auth.signUp({
             email: data.email,
             password: data.password,
             options: {
-                data: {
-                    full_name: data.fullName,
-                },
+                data: { full_name: data.fullName },
             },
         });
 
@@ -56,6 +57,15 @@ export default function SignupPage() {
 
         setSuccess(true);
     };
+
+    if (supabaseLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 text-sky-500 animate-spin mb-4" />
+                <p className="text-slate-500">Loading...</p>
+            </div>
+        );
+    }
 
     if (success) {
         return (

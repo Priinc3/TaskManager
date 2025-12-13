@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/SupabaseProvider";
 import { useTaskStore } from "@/store/taskStore";
 import { TaskForm, TaskList, TaskFilters } from "@/components/tasks";
 import {
@@ -11,13 +11,46 @@ import {
     TrendingUp,
     Calendar,
     Plus,
+    Loader2,
+    AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui";
 import { isToday, isPast } from "date-fns";
 import type { Task } from "@/lib/types";
 
+function LoadingState() {
+    return (
+        <div className="flex flex-col items-center justify-center py-24">
+            <Loader2 className="h-8 w-8 text-sky-500 animate-spin mb-4" />
+            <p className="text-slate-500">Loading dashboard...</p>
+        </div>
+    );
+}
+
+function ErrorState({ message }: { message: string }) {
+    return (
+        <div className="flex flex-col items-center justify-center py-24">
+            <div className="p-4 rounded-full bg-amber-100 dark:bg-amber-900/30 mb-4">
+                <AlertTriangle className="h-8 w-8 text-amber-500" />
+            </div>
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
+                Connection Error
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 text-center max-w-md mb-4">
+                {message}
+            </p>
+            <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors"
+            >
+                Try Again
+            </button>
+        </div>
+    );
+}
+
 export default function DashboardPage() {
-    const supabase = createClient();
+    const { supabase, isLoading: supabaseLoading, error: supabaseError } = useSupabase();
     const {
         tasks,
         setTasks,
@@ -30,41 +63,56 @@ export default function DashboardPage() {
     } = useTaskStore();
 
     const [isLoading, setIsLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const stats = getTaskStats();
     const filteredTasks = getFilteredTasks();
 
     useEffect(() => {
+        if (supabaseLoading) return;
+
         if (!supabase) {
             setIsLoading(false);
             return;
         }
 
         const fetchTasks = async () => {
-            const { data, error } = await supabase
-                .from("tasks")
-                .select("*, subtasks(*), category:categories(*)")
-                .order("created_at", { ascending: false });
+            try {
+                console.log("Fetching tasks...");
+                const { data, error } = await supabase
+                    .from("tasks")
+                    .select("*, subtasks(*), category:categories(*)")
+                    .order("created_at", { ascending: false });
 
-            if (data && !error) {
-                setTasks(data as Task[]);
+                if (error) {
+                    console.error("Error fetching tasks:", error);
+                    setFetchError(error.message);
+                } else if (data) {
+                    console.log("Tasks fetched:", data.length);
+                    setTasks(data as Task[]);
+                }
+            } catch (err) {
+                console.error("Exception fetching tasks:", err);
+                setFetchError("Failed to fetch tasks");
+            } finally {
+                setIsLoading(false);
             }
-            setIsLoading(false);
         };
 
         fetchTasks();
 
         const channel = supabase
-            .channel("tasks")
+            .channel("tasks-realtime")
             .on(
                 "postgres_changes",
                 { event: "*", schema: "public", table: "tasks" },
-                (payload) => {
+                (payload: { eventType: string; new: Record<string, unknown>; old: Record<string, unknown> }) => {
+                    console.log("Realtime event:", payload.eventType);
                     if (payload.eventType === "INSERT") {
-                        addTask(payload.new as Task);
+                        addTask(payload.new as unknown as Task);
                     } else if (payload.eventType === "UPDATE") {
-                        updateTask(payload.new.id, payload.new as Task);
+                        updateTask(payload.new.id as string, payload.new as unknown as Task);
                     } else if (payload.eventType === "DELETE") {
-                        deleteTask(payload.old.id);
+                        deleteTask(payload.old.id as string);
                     }
                 }
             )
@@ -73,7 +121,7 @@ export default function DashboardPage() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [supabase, setTasks, addTask, updateTask, deleteTask]);
+    }, [supabase, supabaseLoading, setTasks, addTask, updateTask, deleteTask]);
 
     const todayTasks = tasks.filter(
         (t) => t.due_date && isToday(new Date(t.due_date)) && t.status !== "completed"
@@ -89,47 +137,69 @@ export default function DashboardPage() {
 
     const handleCreateTask = async (data: Partial<Task>) => {
         if (!supabase) return;
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
 
-        const { data: newTask, error } = await supabase
-            .from("tasks")
-            .insert({
-                ...data,
-                user_id: user.id,
-                status: "todo",
-            })
-            .select()
-            .single();
+            const { data: newTask, error } = await supabase
+                .from("tasks")
+                .insert({
+                    ...data,
+                    user_id: user.id,
+                    status: "todo",
+                })
+                .select()
+                .single();
 
-        if (newTask && !error) {
-            addTask(newTask as Task);
+            if (newTask && !error) {
+                addTask(newTask as Task);
+            }
+        } catch (err) {
+            console.error("Error creating task:", err);
         }
     };
 
     const handleUpdateTask = async (task: Task) => {
         if (!supabase) return;
-        const { error } = await supabase
-            .from("tasks")
-            .update({
-                status: task.status,
-                completed_at: task.completed_at,
-                updated_at: new Date().toISOString(),
-            })
-            .eq("id", task.id);
+        try {
+            const { error } = await supabase
+                .from("tasks")
+                .update({
+                    status: task.status,
+                    completed_at: task.completed_at,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq("id", task.id);
 
-        if (!error) {
-            updateTask(task.id, task);
+            if (!error) {
+                updateTask(task.id, task);
+            }
+        } catch (err) {
+            console.error("Error updating task:", err);
         }
     };
 
     const handleDeleteTask = async (id: string) => {
         if (!supabase) return;
-        const { error } = await supabase.from("tasks").delete().eq("id", id);
-        if (!error) {
-            deleteTask(id);
+        try {
+            const { error } = await supabase.from("tasks").delete().eq("id", id);
+            if (!error) {
+                deleteTask(id);
+            }
+        } catch (err) {
+            console.error("Error deleting task:", err);
         }
     };
+
+    // Show loading state
+    if (supabaseLoading || isLoading) {
+        return <LoadingState />;
+    }
+
+    // Show error state
+    if (supabaseError || fetchError) {
+        return <ErrorState message={supabaseError || fetchError || "Unknown error"} />;
+    }
 
     const statCards = [
         {
@@ -225,17 +295,11 @@ export default function DashboardPage() {
                         {todayTasks.length}
                     </span>
                 </div>
-                {isLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
-                    </div>
-                ) : (
-                    <TaskList
-                        tasks={todayTasks}
-                        onUpdate={handleUpdateTask}
-                        onDelete={handleDeleteTask}
-                    />
-                )}
+                <TaskList
+                    tasks={todayTasks}
+                    onUpdate={handleUpdateTask}
+                    onDelete={handleDeleteTask}
+                />
             </div>
 
             <div className="card p-6">
@@ -243,17 +307,11 @@ export default function DashboardPage() {
                     All Tasks
                 </h2>
                 <TaskFilters />
-                {isLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
-                    </div>
-                ) : (
-                    <TaskList
-                        tasks={filteredTasks}
-                        onUpdate={handleUpdateTask}
-                        onDelete={handleDeleteTask}
-                    />
-                )}
+                <TaskList
+                    tasks={filteredTasks}
+                    onUpdate={handleUpdateTask}
+                    onDelete={handleDeleteTask}
+                />
             </div>
 
             <TaskForm onSubmit={handleCreateTask} />

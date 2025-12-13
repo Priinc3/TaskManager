@@ -6,8 +6,8 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { useSupabase } from "@/lib/supabase/SupabaseProvider";
 import { Button, Input } from "@/components/ui";
 
 const loginSchema = z.object({
@@ -18,10 +18,10 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+    const { supabase, isLoading: supabaseLoading } = useSupabase();
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
-    const supabase = createClient();
 
     const {
         register,
@@ -32,7 +32,10 @@ export default function LoginPage() {
     });
 
     const onSubmit = async (data: LoginFormData) => {
-        if (!supabase) return;
+        if (!supabase) {
+            setError("Unable to connect to database");
+            return;
+        }
         setError(null);
 
         const { error } = await supabase.auth.signInWithPassword({
@@ -48,6 +51,15 @@ export default function LoginPage() {
         router.push("/dashboard");
         router.refresh();
     };
+
+    if (supabaseLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 text-sky-500 animate-spin mb-4" />
+                <p className="text-slate-500">Loading...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="animate-fade-in">
@@ -92,16 +104,6 @@ export default function LoginPage() {
                     >
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                    <label className="flex items-center gap-2">
-                        <input
-                            type="checkbox"
-                            className="rounded border-slate-300 text-sky-500 focus:ring-sky-500"
-                        />
-                        <span className="text-slate-600 dark:text-slate-400">Remember me</span>
-                    </label>
                 </div>
 
                 <Button type="submit" className="w-full" size="lg" isLoading={isSubmitting}>

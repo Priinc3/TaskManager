@@ -1,19 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/SupabaseProvider";
 import { Button, Input, Select } from "@/components/ui";
-import { User, Bell, Palette, Moon, Sun, Save } from "lucide-react";
+import { User, Bell, Palette, Moon, Sun, Save, Loader2 } from "lucide-react";
 
 export default function SettingsPage() {
-    const supabase = createClient();
+    const { supabase, isLoading: supabaseLoading } = useSupabase();
     const [user, setUser] = useState<{ email?: string; user_metadata?: { full_name?: string } } | null>(null);
     const [isDark, setIsDark] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
     useEffect(() => {
-        if (!supabase) return;
+        if (supabaseLoading || !supabase) return;
 
         const getUser = async () => {
             const { data: { user } } = await supabase.auth.getUser();
@@ -22,7 +22,7 @@ export default function SettingsPage() {
         getUser();
 
         setIsDark(document.documentElement.classList.contains("dark"));
-    }, [supabase]);
+    }, [supabase, supabaseLoading]);
 
     const toggleTheme = () => {
         setIsDark(!isDark);
@@ -37,24 +37,27 @@ export default function SettingsPage() {
         setIsSaving(false);
     };
 
+    if (supabaseLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center py-24">
+                <Loader2 className="h-8 w-8 text-sky-500 animate-spin mb-4" />
+                <p className="text-slate-500">Loading settings...</p>
+            </div>
+        );
+    }
+
     return (
         <div className="max-w-2xl space-y-6">
             <div>
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                    Settings
-                </h1>
-                <p className="text-slate-500 dark:text-slate-400">
-                    Manage your account and preferences
-                </p>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Settings</h1>
+                <p className="text-slate-500 dark:text-slate-400">Manage your account and preferences</p>
             </div>
 
             {message && (
-                <div
-                    className={`p-4 rounded-xl ${message.type === "success"
-                            ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"
-                            : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300"
-                        }`}
-                >
+                <div className={`p-4 rounded-xl ${message.type === "success"
+                        ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"
+                        : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300"
+                    }`}>
                     {message.text}
                 </div>
             )}
@@ -103,10 +106,7 @@ export default function SettingsPage() {
                         onClick={toggleTheme}
                         className="relative w-14 h-8 rounded-full bg-slate-200 dark:bg-slate-700 transition-colors"
                     >
-                        <div
-                            className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isDark ? "left-7" : "left-1"
-                                }`}
-                        >
+                        <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isDark ? "left-7" : "left-1"}`}>
                             {isDark ? <Moon className="h-3.5 w-3.5 text-slate-600" /> : <Sun className="h-3.5 w-3.5 text-amber-500" />}
                         </div>
                     </button>
@@ -124,15 +124,6 @@ export default function SettingsPage() {
                     </div>
                 </div>
                 <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="font-medium text-slate-900 dark:text-white">Push Notifications</p>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">Receive browser notifications</p>
-                        </div>
-                        <button className="relative w-14 h-8 rounded-full bg-sky-500 transition-colors">
-                            <div className="absolute top-1 left-7 w-6 h-6 rounded-full bg-white shadow-md transition-all" />
-                        </button>
-                    </div>
                     <Select
                         label="Default Reminder Time"
                         options={[
