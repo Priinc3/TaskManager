@@ -112,7 +112,7 @@ export function TaskForm({ onSubmit }: TaskFormProps) {
             dueDateISO = localDate.toISOString();
         }
 
-        const taskData: Partial<Task> = {
+        const taskData: Partial<Task> & { reminder_minutes?: number } = {
             title: data.title,
             description: data.description,
             priority: data.priority as Priority,
@@ -121,6 +121,7 @@ export function TaskForm({ onSubmit }: TaskFormProps) {
             tags: data.tags
                 ? data.tags.split(",").map((t) => t.trim()).filter(Boolean)
                 : [],
+            reminder_minutes: data.reminder_minutes ? parseInt(data.reminder_minutes) : undefined,
         };
 
         if (editingTask) {

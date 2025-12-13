@@ -135,16 +135,19 @@ export default function DashboardPage() {
             t.status !== "completed"
     );
 
-    const handleCreateTask = async (data: Partial<Task>) => {
+    const handleCreateTask = async (data: Partial<Task> & { reminder_minutes?: number }) => {
         if (!supabase) return;
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
+            // Extract reminder_minutes before inserting task
+            const { reminder_minutes, ...taskData } = data;
+
             const { data: newTask, error } = await supabase
                 .from("tasks")
                 .insert({
-                    ...data,
+                    ...taskData,
                     user_id: user.id,
                     status: "todo",
                 })
@@ -153,6 +156,18 @@ export default function DashboardPage() {
 
             if (newTask && !error) {
                 addTask(newTask as Task);
+
+                // Create a reminder if reminder_minutes is set and task has a due_date
+                if (reminder_minutes && reminder_minutes > 0 && newTask.due_date) {
+                    const dueDate = new Date(newTask.due_date);
+                    const remindAt = new Date(dueDate.getTime() - reminder_minutes * 60 * 1000);
+
+                    await supabase.from("reminders").insert({
+                        task_id: newTask.id,
+                        remind_at: remindAt.toISOString(),
+                        is_sent: false,
+                    });
+                }
             }
         } catch (err) {
             console.error("Error creating task:", err);
