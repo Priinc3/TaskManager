@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Mail, Lock, User, Eye, EyeOff } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import { Button, Input } from "@/components/ui";
-import { createBrowserClient } from "@supabase/ssr";
 
 const signupSchema = z.object({
     fullName: z.string().min(2, "Name must be at least 2 characters"),
@@ -26,16 +25,7 @@ export default function SignupPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
-    const router = useRouter();
-
-    // Create client only in browser
-    const supabase = useMemo(() => {
-        if (typeof window === "undefined") return null;
-        return createBrowserClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
-    }, []);
+    const supabase = createClient();
 
     const {
         register,
@@ -77,10 +67,9 @@ export default function SignupPage() {
                     Check your email
                 </h1>
                 <p className="text-slate-600 dark:text-slate-400 mb-6">
-                    We&apos;ve sent you a confirmation link. Please check your email to
-                    verify your account.
+                    We&apos;ve sent you a confirmation link.
                 </p>
-                <Link href="/login" className="btn-primary btn-md">
+                <Link href="/login" className="text-sky-600 hover:text-sky-700 font-medium">
                     Back to login
                 </Link>
             </div>
@@ -137,11 +126,7 @@ export default function SignupPage() {
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-9 text-slate-400 hover:text-slate-600 transition-colors"
                     >
-                        {showPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                        ) : (
-                            <Eye className="h-4 w-4" />
-                        )}
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                 </div>
 
@@ -161,10 +146,7 @@ export default function SignupPage() {
 
             <p className="mt-6 text-center text-sm text-slate-600 dark:text-slate-400">
                 Already have an account?{" "}
-                <Link
-                    href="/login"
-                    className="text-sky-600 hover:text-sky-700 font-medium"
-                >
+                <Link href="/login" className="text-sky-600 hover:text-sky-700 font-medium">
                     Sign in
                 </Link>
             </p>

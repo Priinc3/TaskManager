@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config";
 
 interface CookieToSet {
     name: string;
@@ -12,17 +13,9 @@ export async function updateSession(request: NextRequest) {
         request,
     });
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    // During build time, env vars might not be available
-    if (!supabaseUrl || !supabaseAnonKey) {
-        return supabaseResponse;
-    }
-
     const supabase = createServerClient(
-        supabaseUrl,
-        supabaseAnonKey,
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY,
         {
             cookies: {
                 getAll() {
@@ -43,12 +36,12 @@ export async function updateSession(request: NextRequest) {
         }
     );
 
-    // Refresh session if expired - required for Server Components
+    // Refresh session if expired
     const {
         data: { user },
     } = await supabase.auth.getUser();
 
-    // Protected routes - redirect to login if not authenticated
+    // Protected routes
     const isAuthRoute = request.nextUrl.pathname.startsWith("/login") ||
         request.nextUrl.pathname.startsWith("/signup");
     const isPublicRoute = request.nextUrl.pathname === "/";
@@ -59,7 +52,6 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url);
     }
 
-    // Redirect authenticated users away from auth pages
     if (user && isAuthRoute) {
         const url = request.nextUrl.clone();
         url.pathname = "/dashboard";

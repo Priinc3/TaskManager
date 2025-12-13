@@ -1,11 +1,10 @@
 import { createBrowserClient } from "@supabase/ssr";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config";
 
 let supabaseClient: ReturnType<typeof createBrowserClient> | null = null;
 
 export function createClient() {
-    // Only create client in browser and cache it
     if (typeof window === "undefined") {
-        // Return a mock during SSR that won't throw
         return null as unknown as ReturnType<typeof createBrowserClient>;
     }
 
@@ -13,15 +12,6 @@ export function createClient() {
         return supabaseClient;
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-        console.error("Missing Supabase environment variables");
-        // Return a mock that won't crash the app
-        return null as unknown as ReturnType<typeof createBrowserClient>;
-    }
-
-    supabaseClient = createBrowserClient(supabaseUrl, supabaseAnonKey);
+    supabaseClient = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     return supabaseClient;
 }

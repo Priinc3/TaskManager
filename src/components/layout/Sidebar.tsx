@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -9,7 +10,6 @@ import {
     Settings,
     Plus,
     Sun,
-    Folder,
     Clock,
     CheckCircle2,
 } from "lucide-react";
@@ -39,7 +39,7 @@ export function Sidebar() {
             {/* Logo */}
             <div className="p-6">
                 <Link href="/dashboard" className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-fuchsia-500 flex items-center justify-center">
                         <CheckSquare className="h-5 w-5 text-white" />
                     </div>
                     <span className="text-xl font-bold text-gradient">TaskFlow</span>
@@ -48,11 +48,7 @@ export function Sidebar() {
 
             {/* Add Task Button */}
             <div className="px-4 mb-4">
-                <Button
-                    onClick={() => openTaskForm()}
-                    className="w-full"
-                    size="md"
-                >
+                <Button onClick={() => openTaskForm()} className="w-full" size="md">
                     <Plus className="h-4 w-4" />
                     Add Task
                 </Button>
@@ -70,9 +66,7 @@ export function Sidebar() {
                                 <Link
                                     href={item.href}
                                     className={cn(
-                                        pathname === item.href
-                                            ? "sidebar-link-active"
-                                            : "sidebar-link"
+                                        pathname === item.href ? "sidebar-link-active" : "sidebar-link"
                                     )}
                                 >
                                     <item.icon className="h-5 w-5" />
@@ -97,7 +91,7 @@ export function Sidebar() {
                                         {filter.label}
                                     </span>
                                     {filter.id === "today" && stats.pending > 0 && (
-                                        <span className="px-2 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-xs font-medium">
+                                        <span className="px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 text-xs font-medium">
                                             {stats.pending}
                                         </span>
                                     )}
@@ -126,9 +120,7 @@ export function Sidebar() {
                                 </li>
                             ))
                         ) : (
-                            <li className="px-4 py-2 text-sm text-slate-400">
-                                No categories yet
-                            </li>
+                            <li className="px-4 py-2 text-sm text-slate-400">No categories yet</li>
                         )}
                     </ul>
                 </div>

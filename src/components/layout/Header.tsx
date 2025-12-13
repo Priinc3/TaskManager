@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { Search, Bell, Moon, Sun, LogOut, User } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui";
 import { useTaskStore } from "@/store/taskStore";
-import { createBrowserClient } from "@supabase/ssr";
 
 interface HeaderProps {
     user?: {
@@ -19,6 +19,7 @@ export function Header({ user }: HeaderProps) {
     const [showUserMenu, setShowUserMenu] = useState(false);
     const { setFilters, filters } = useTaskStore();
     const router = useRouter();
+    const supabase = createClient();
 
     const toggleTheme = () => {
         setIsDark(!isDark);
@@ -26,10 +27,7 @@ export function Header({ user }: HeaderProps) {
     };
 
     const handleSignOut = async () => {
-        const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-        if (url && key) {
-            const supabase = createBrowserClient(url, key);
+        if (supabase) {
             await supabase.auth.signOut();
         }
         router.push("/login");

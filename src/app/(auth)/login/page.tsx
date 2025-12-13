@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import { Button, Input } from "@/components/ui";
-import { createBrowserClient } from "@supabase/ssr";
 
 const loginSchema = z.object({
     email: z.string().email("Please enter a valid email"),
@@ -21,15 +21,7 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
-
-    // Create client only in browser
-    const supabase = useMemo(() => {
-        if (typeof window === "undefined") return null;
-        return createBrowserClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
-    }, []);
+    const supabase = createClient();
 
     const {
         register,
@@ -98,11 +90,7 @@ export default function LoginPage() {
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-9 text-slate-400 hover:text-slate-600 transition-colors"
                     >
-                        {showPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                        ) : (
-                            <Eye className="h-4 w-4" />
-                        )}
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                 </div>
 
@@ -112,16 +100,8 @@ export default function LoginPage() {
                             type="checkbox"
                             className="rounded border-slate-300 text-sky-500 focus:ring-sky-500"
                         />
-                        <span className="text-slate-600 dark:text-slate-400">
-                            Remember me
-                        </span>
+                        <span className="text-slate-600 dark:text-slate-400">Remember me</span>
                     </label>
-                    <Link
-                        href="/forgot-password"
-                        className="text-sky-600 hover:text-sky-700 font-medium"
-                    >
-                        Forgot password?
-                    </Link>
                 </div>
 
                 <Button type="submit" className="w-full" size="lg" isLoading={isSubmitting}>
@@ -131,10 +111,7 @@ export default function LoginPage() {
 
             <p className="mt-6 text-center text-sm text-slate-600 dark:text-slate-400">
                 Don&apos;t have an account?{" "}
-                <Link
-                    href="/signup"
-                    className="text-sky-600 hover:text-sky-700 font-medium"
-                >
+                <Link href="/signup" className="text-sky-600 hover:text-sky-700 font-medium">
                     Sign up for free
                 </Link>
             </p>

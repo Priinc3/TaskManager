@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { useTaskStore } from "@/store/taskStore";
 import { TaskForm } from "@/components/tasks";
 import { Button } from "@/components/ui";
@@ -10,7 +11,6 @@ import {
     Plus,
     Circle,
     CheckCircle2,
-    AlertTriangle,
 } from "lucide-react";
 import {
     format,
@@ -27,42 +27,26 @@ import {
 } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/lib/types";
-import { createBrowserClient } from "@supabase/ssr";
 
 export default function CalendarPage() {
+    const supabase = createClient();
     const { tasks, setTasks, openTaskForm, addTask } = useTaskStore();
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    // Create client only in browser with error handling
-    const supabase = useMemo(() => {
-        if (typeof window === "undefined") return null;
-        try {
-            const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-            const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-            if (!url || !key) return null;
-            return createBrowserClient(url, key);
-        } catch (err) {
-            console.error("Failed to create Supabase client:", err);
-            return null;
-        }
-    }, []);
 
     useEffect(() => {
         if (!supabase) {
-            setError("Unable to connect to database.");
             setIsLoading(false);
             return;
         }
 
         const fetchTasks = async () => {
-            const { data, error: fetchError } = await supabase
+            const { data, error } = await supabase
                 .from("tasks")
                 .select("*")
                 .order("due_date", { ascending: true });
 
-            if (data && !fetchError) {
+            if (data && !error) {
                 setTasks(data as Task[]);
             }
             setIsLoading(false);
@@ -105,15 +89,6 @@ export default function CalendarPage() {
 
     const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-    if (error && !supabase) {
-        return (
-            <div className="flex flex-col items-center justify-center py-24">
-                <AlertTriangle className="h-8 w-8 text-amber-500 mb-4" />
-                <p className="text-slate-500">{error}</p>
-            </div>
-        );
-    }
-
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -132,7 +107,6 @@ export default function CalendarPage() {
             </div>
 
             <div className="card p-6">
-                {/* Calendar Header */}
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
                         {format(currentMonth, "MMMM yyyy")}
@@ -165,7 +139,6 @@ export default function CalendarPage() {
                     </div>
                 ) : (
                     <>
-                        {/* Week Days */}
                         <div className="grid grid-cols-7 mb-2">
                             {weekDays.map((day) => (
                                 <div
@@ -177,7 +150,6 @@ export default function CalendarPage() {
                             ))}
                         </div>
 
-                        {/* Calendar Days */}
                         <div className="grid grid-cols-7 gap-1">
                             {calendarDays.map((day) => {
                                 const dayTasks = getTasksForDay(day);

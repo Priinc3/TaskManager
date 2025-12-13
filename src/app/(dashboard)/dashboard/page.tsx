@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { useTaskStore } from "@/store/taskStore";
 import { TaskForm, TaskList, TaskFilters } from "@/components/tasks";
 import {
@@ -10,14 +11,13 @@ import {
     TrendingUp,
     Calendar,
     Plus,
-    AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui";
 import { isToday, isPast } from "date-fns";
 import type { Task } from "@/lib/types";
-import { createBrowserClient } from "@supabase/ssr";
 
 export default function DashboardPage() {
+    const supabase = createClient();
     const {
         tasks,
         setTasks,
@@ -30,57 +30,29 @@ export default function DashboardPage() {
     } = useTaskStore();
 
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const stats = getTaskStats();
     const filteredTasks = getFilteredTasks();
 
-    // Create client only in browser with error handling
-    const supabase = useMemo(() => {
-        if (typeof window === "undefined") return null;
-        try {
-            const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-            const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-            if (!url || !key || url === "" || key === "") {
-                console.error("Supabase env vars missing:", { url: !!url, key: !!key });
-                return null;
-            }
-            return createBrowserClient(url, key);
-        } catch (err) {
-            console.error("Failed to create Supabase client:", err);
-            return null;
-        }
-    }, []);
-
-    // Fetch tasks on mount
     useEffect(() => {
         if (!supabase) {
-            setError("Unable to connect to database. Please check configuration.");
             setIsLoading(false);
             return;
         }
 
         const fetchTasks = async () => {
-            try {
-                const { data, error: fetchError } = await supabase
-                    .from("tasks")
-                    .select("*, subtasks(*), category:categories(*)")
-                    .order("created_at", { ascending: false });
+            const { data, error } = await supabase
+                .from("tasks")
+                .select("*, subtasks(*), category:categories(*)")
+                .order("created_at", { ascending: false });
 
-                if (fetchError) {
-                    setError(fetchError.message);
-                } else if (data) {
-                    setTasks(data as Task[]);
-                }
-            } catch (err) {
-                setError("Failed to fetch tasks");
-                console.error(err);
+            if (data && !error) {
+                setTasks(data as Task[]);
             }
             setIsLoading(false);
         };
 
         fetchTasks();
 
-        // Subscribe to real-time changes
         const channel = supabase
             .channel("tasks")
             .on(
@@ -103,12 +75,10 @@ export default function DashboardPage() {
         };
     }, [supabase, setTasks, addTask, updateTask, deleteTask]);
 
-    // Today's tasks
     const todayTasks = tasks.filter(
         (t) => t.due_date && isToday(new Date(t.due_date)) && t.status !== "completed"
     );
 
-    // Overdue tasks
     const overdueTasks = tasks.filter(
         (t) =>
             t.due_date &&
@@ -192,29 +162,8 @@ export default function DashboardPage() {
         },
     ];
 
-    // Show error state if Supabase failed to initialize
-    if (error && !supabase) {
-        return (
-            <div className="flex flex-col items-center justify-center py-24">
-                <div className="p-4 rounded-full bg-amber-100 dark:bg-amber-900/30 mb-4">
-                    <AlertTriangle className="h-8 w-8 text-amber-500" />
-                </div>
-                <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
-                    Configuration Error
-                </h2>
-                <p className="text-slate-500 dark:text-slate-400 text-center max-w-md">
-                    {error}
-                </p>
-                <p className="text-sm text-slate-400 dark:text-slate-500 mt-4">
-                    Check that environment variables are properly configured.
-                </p>
-            </div>
-        );
-    }
-
     return (
         <div className="space-y-6">
-            {/* Page Header */}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -230,7 +179,6 @@ export default function DashboardPage() {
                 </Button>
             </div>
 
-            {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {statCards.map((stat) => (
                     <div key={stat.label} className="card p-5">
@@ -251,7 +199,6 @@ export default function DashboardPage() {
                 ))}
             </div>
 
-            {/* Overdue Alert */}
             {overdueTasks.length > 0 && (
                 <div className="card bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 p-4">
                     <div className="flex items-center gap-3">
@@ -268,7 +215,6 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            {/* Today's Tasks */}
             <div className="card p-6">
                 <div className="flex items-center gap-3 mb-4">
                     <Calendar className="h-5 w-5 text-sky-500" />
@@ -292,7 +238,6 @@ export default function DashboardPage() {
                 )}
             </div>
 
-            {/* All Tasks */}
             <div className="card p-6">
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
                     All Tasks
@@ -311,7 +256,6 @@ export default function DashboardPage() {
                 )}
             </div>
 
-            {/* Task Form Modal */}
             <TaskForm onSubmit={handleCreateTask} />
         </div>
     );
