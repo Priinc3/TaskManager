@@ -1,14 +1,47 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+
+export const dynamic = "force-dynamic";
 
 export default async function DashboardLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    const supabase = await createClient();
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    // Handle missing env vars gracefully
+    if (!supabaseUrl || !supabaseAnonKey) {
+        redirect("/login");
+    }
+
+    const cookieStore = await cookies();
+
+    const supabase = createServerClient(
+        supabaseUrl,
+        supabaseAnonKey,
+        {
+            cookies: {
+                getAll() {
+                    return cookieStore.getAll();
+                },
+                setAll(cookiesToSet) {
+                    try {
+                        cookiesToSet.forEach(({ name, value, options }) =>
+                            cookieStore.set(name, value, options)
+                        );
+                    } catch {
+                        // Ignore errors in Server Components
+                    }
+                },
+            },
+        }
+    );
+
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
