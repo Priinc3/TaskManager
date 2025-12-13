@@ -10,6 +10,16 @@ import { useTaskStore } from "@/store/taskStore";
 import { PRIORITIES, REMINDER_PRESETS } from "@/lib/constants";
 import type { Task, Priority } from "@/lib/types";
 
+// Helper to format Date object to local datetime-local input value (YYYY-MM-DDTHH:mm)
+function formatDateForInput(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 const taskSchema = z.object({
     title: z.string().min(1, "Title is required"),
     description: z.string().optional(),
@@ -68,7 +78,7 @@ export function TaskForm({ onSubmit }: TaskFormProps) {
                 description: editingTask.description || "",
                 priority: editingTask.priority,
                 due_date: editingTask.due_date
-                    ? new Date(editingTask.due_date).toISOString().slice(0, 16)
+                    ? formatDateForInput(new Date(editingTask.due_date))
                     : "",
                 category_id: editingTask.category_id || "",
                 tags: editingTask.tags?.join(", ") || "",
@@ -94,11 +104,19 @@ export function TaskForm({ onSubmit }: TaskFormProps) {
     }, [editingTask, reset]);
 
     const handleFormSubmit = async (data: TaskFormData) => {
+        // Convert local datetime-local value to ISO string with timezone
+        let dueDateISO: string | undefined;
+        if (data.due_date) {
+            // datetime-local gives us local time, create a Date object from it
+            const localDate = new Date(data.due_date);
+            dueDateISO = localDate.toISOString();
+        }
+
         const taskData: Partial<Task> = {
             title: data.title,
             description: data.description,
             priority: data.priority as Priority,
-            due_date: data.due_date || undefined,
+            due_date: dueDateISO,
             category_id: data.category_id || undefined,
             tags: data.tags
                 ? data.tags.split(",").map((t) => t.trim()).filter(Boolean)
