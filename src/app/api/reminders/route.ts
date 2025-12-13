@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     // Get user emails for each reminder
     const remindersWithEmails = await Promise.all(
         (reminders || []).map(async (reminder) => {
-            const task = reminder.task as { user_id: string } | null;
+            const task = reminder.task as unknown as { user_id: string } | null;
             if (!task?.user_id) return reminder;
 
             const { data: profile } = await supabase
