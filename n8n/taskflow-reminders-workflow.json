@@ -1,4 +1,5 @@
 {
+    "name": "TaskFlow Reminders Workflow",
     "nodes": [
         {
             "parameters": {
@@ -12,7 +13,7 @@
                 }
             },
             "id": "37a4b939-e257-4b45-b0fc-9c5be7379c04",
-            "name": "Every Minute1",
+            "name": "Every Minute",
             "type": "n8n-nodes-base.scheduleTrigger",
             "typeVersion": 1.2,
             "position": [
@@ -35,7 +36,7 @@
                 "options": {}
             },
             "id": "d4936187-5d4a-474b-966a-5b716573aaf0",
-            "name": "Fetch Pending Reminders1",
+            "name": "Fetch Pending Reminders",
             "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.2,
             "position": [
@@ -68,7 +69,7 @@
                 "options": {}
             },
             "id": "e75ff23b-1462-4563-a285-5d9db35602ab",
-            "name": "Has Reminders?1",
+            "name": "Has Reminders?",
             "type": "n8n-nodes-base.if",
             "typeVersion": 2,
             "position": [
@@ -82,7 +83,7 @@
                 "options": {}
             },
             "id": "a8809b6a-e012-435e-816f-966b79a39192",
-            "name": "Split Into Items1",
+            "name": "Split Into Items",
             "type": "n8n-nodes-base.splitOut",
             "typeVersion": 1,
             "position": [
@@ -100,14 +101,13 @@
                 }
             },
             "id": "01602e9d-de9c-4202-9590-0ad3a04a2a73",
-            "name": "Send Gmail1",
+            "name": "Send Gmail",
             "type": "n8n-nodes-base.gmail",
             "typeVersion": 2.1,
             "position": [
                 96,
                 288
             ],
-            "webhookId": "78c1ccb1-9156-44d1-a65b-1c1855dcd2f3",
             "credentials": {
                 "gmailOAuth2": {
                     "id": "LG8ge52ue9UEyKHL",
@@ -130,7 +130,7 @@
                 "options": {}
             },
             "id": "53e89c8d-a93f-4e80-a998-1f42f93d61c6",
-            "name": "Extract Reminder ID1",
+            "name": "Extract Reminder ID",
             "type": "n8n-nodes-base.set",
             "typeVersion": 3.4,
             "position": [
@@ -147,7 +147,7 @@
                 "options": {}
             },
             "id": "f714fcee-26ea-4d5a-a407-eac2d36f0a7a",
-            "name": "Collect All IDs1",
+            "name": "Collect All IDs",
             "type": "n8n-nodes-base.aggregate",
             "typeVersion": 1,
             "position": [
@@ -178,7 +178,7 @@
                 "options": {}
             },
             "id": "444cfee3-1530-4b7b-a0fb-1e2793f6ba80",
-            "name": "Mark Reminders as Sent1",
+            "name": "Mark Reminders as Sent",
             "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.2,
             "position": [
@@ -189,7 +189,7 @@
         {
             "parameters": {},
             "id": "a35eacae-2d03-4c01-bb49-a5e25bcee90e",
-            "name": "No Reminders1",
+            "name": "No Reminders",
             "type": "n8n-nodes-base.noOp",
             "typeVersion": 1,
             "position": [
@@ -199,84 +199,84 @@
         }
     ],
     "connections": {
-        "Every Minute1": {
+        "Every Minute": {
             "main": [
                 [
                     {
-                        "node": "Fetch Pending Reminders1",
+                        "node": "Fetch Pending Reminders",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Fetch Pending Reminders1": {
+        "Fetch Pending Reminders": {
             "main": [
                 [
                     {
-                        "node": "Has Reminders?1",
+                        "node": "Has Reminders?",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Has Reminders?1": {
+        "Has Reminders?": {
             "main": [
                 [
                     {
-                        "node": "Split Into Items1",
+                        "node": "Split Into Items",
                         "type": "main",
                         "index": 0
                     }
                 ],
                 [
                     {
-                        "node": "No Reminders1",
+                        "node": "No Reminders",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Split Into Items1": {
+        "Split Into Items": {
             "main": [
                 [
                     {
-                        "node": "Send Gmail1",
+                        "node": "Send Gmail",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Send Gmail1": {
+        "Send Gmail": {
             "main": [
                 [
                     {
-                        "node": "Extract Reminder ID1",
+                        "node": "Extract Reminder ID",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Extract Reminder ID1": {
+        "Extract Reminder ID": {
             "main": [
                 [
                     {
-                        "node": "Collect All IDs1",
+                        "node": "Collect All IDs",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Collect All IDs1": {
+        "Collect All IDs": {
             "main": [
                 [
                     {
-                        "node": "Mark Reminders as Sent1",
+                        "node": "Mark Reminders as Sent",
                         "type": "main",
                         "index": 0
                     }
